@@ -1,0 +1,64 @@
+## Ignore Visual Studio working folder
+.vs/
+
+## Build results
+bin/
+obj/
+[Bb]uild/
+[Ll]og/
+
+## VS user-specific files
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+## Debug / Release folders
+[Dd]ebug*/
+[Rr]elease*/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+
+## .NET tools
+.project.lock.json
+project.lock.json
+artifacts/
+
+## NuGet
+*.nupkg
+packages/
+*.snupkg
+.nuget/
+
+## Azure / publish profiles
+PublishProfiles/
+*.pubxml
+*.pubxml.user
+
+## Resharper / Rider / other IDEs
+_ReSharper*/
+*.DotSettings.user
+.idea/
+*.sln.iml
+
+## Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+## Temporary files
+*.tmp
+*.temp
+~$*
+*.bak
+
+## Logs
+*.log
+
+## Others you usually do not want in repo
+*.dbmdl
+*.jfm
+*.pdb
+
+# End of file

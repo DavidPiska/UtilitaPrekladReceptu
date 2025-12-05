@@ -1,0 +1,18 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+# SharpDevelop 5.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UtilitaPrekladReceptu", "UtilitaPrekladReceptu\UtilitaPrekladReceptu.csproj", "{98C030AB-3DE4-4C7C-8D7D-17E857AC10DE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{98C030AB-3DE4-4C7C-8D7D-17E857AC10DE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98C030AB-3DE4-4C7C-8D7D-17E857AC10DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98C030AB-3DE4-4C7C-8D7D-17E857AC10DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98C030AB-3DE4-4C7C-8D7D-17E857AC10DE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
