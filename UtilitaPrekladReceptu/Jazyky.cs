@@ -51,7 +51,9 @@ namespace UtilitaPrekladReceptu
     }
 
     /// <summary>
-    /// nacte slovnik ze souboru
+    /// Loads the dictionary from file.
+    /// Minimal change: register BOTH column 0 (Czech) and column 1 (English) as lookup keys,
+    /// so the tool can translate when the source text is Czech OR English.
     /// </summary>
     public void Init()
     {
@@ -68,7 +70,7 @@ namespace UtilitaPrekladReceptu
             }
 
           znova2:
-            i = line.IndexOf("\""); // odstrani uvozovky bo excel 2010 je doplnuje kam se mu zachce
+            i = line.IndexOf("\""); // remove quotes that Excel might add
             if (i >= 0)
             {
               line = line.Remove(i, 1);
@@ -86,16 +88,29 @@ namespace UtilitaPrekladReceptu
             if (fields.Length == 0)
               continue;
 
-            string key = fields[0];
-
-            if (!dictionary.ContainsKey(key))
+            // --- minimal changes start ---
+            // Always register column 0 (Czech) as a key
+            string keyCs = fields[0];
+            if (!string.IsNullOrEmpty(keyCs) && !dictionary.ContainsKey(keyCs))
             {
-              dictionary.Add(key, fields);
+              dictionary.Add(keyCs, fields);
             }
             else
             {
               //MyDebug.Add("!stejny slovnik: "+fields[0]);
             }
+
+            // Additionally register column 1 (English) as an alternate key if present and different.
+            if (fields.Length > 1)
+            {
+              string keyEn = fields[1];
+              if (!string.IsNullOrEmpty(keyEn) && keyEn != keyCs && !dictionary.ContainsKey(keyEn))
+              {
+                // Map the English source phrase to the SAME translation row.
+                dictionary.Add(keyEn, fields);
+              }
+            }
+            // --- minimal changes end ---
           }
         }
       }
@@ -107,7 +122,7 @@ namespace UtilitaPrekladReceptu
     }
 
     /// <summary>
-    /// najde ve slovniku prislusny jazyk a vrati text
+    /// Looks up the proper language in the dictionary and returns the text.
     /// </summary>
     /// <param name="s"></param>
     /// <returns> string </returns>
@@ -120,7 +135,7 @@ namespace UtilitaPrekladReceptu
       MainForm.infoCounter++; // pocitadlo pruchodu
 
     znova:
-      int i = s.IndexOf(Environment.NewLine); // odstrani entery a rozdeli to na radky
+      int i = s.IndexOf(Environment.NewLine); // split by lines
       if (i > 0)
       {
         string s2 = s.Substring(0, i);
@@ -130,7 +145,7 @@ namespace UtilitaPrekladReceptu
       }
 
     znova2:
-      i = s.IndexOf('"'); // odstrani uvozovky bo excel 2010 je doplnuje kam se mu zachce
+      i = s.IndexOf('"'); // remove quotes that Excel might add
       if (i > 0)
       {
         s = s.Remove(i, 1);
@@ -144,14 +159,14 @@ namespace UtilitaPrekladReceptu
       if (s == "")
         return "";
 
-      if (dictionary.ContainsKey(s))  // klic existuje
+      if (dictionary.ContainsKey(s))  // key exists (now for CZ OR EN source)
       {
         string[] ss = dictionary[s];
-        if (ss.Length <= MainForm.Jazyk)  // kdyz neni dopsany jazyk
+        if (ss.Length <= MainForm.Jazyk)  // target language column not present
         {
           MainForm.Log += "Language " + MainForm.Jazyk.ToString() + " does not exist (" + s + ")" + Environment.NewLine;
-          if (ss.Length > 1) { return ss[1]; }    // a existuje anglictina, tak ji vrati
-          return s;         // vrati orig. cestinu
+          if (ss.Length > 1) { return ss[1]; }    // fallback to English if present
+          return s;         // fallback to source (Czech)
         }
         if (ss[MainForm.Jazyk] == "")
         {
@@ -159,15 +174,15 @@ namespace UtilitaPrekladReceptu
           string[] ssL = dictionary["cs"];
           string[] ssL2 = dictionary["Czech"];
           MainForm.Log += "Missing /" + ss[0] + "/ in language " + ssL[MainForm.Jazyk].ToString() + " " + ssL2[MainForm.Jazyk].ToString() + Environment.NewLine;
-          if ((ss.Length > 1) && (ss[1] != "")) // kdyz je anglictina a neni prazdna ""
+          if ((ss.Length > 1) && (ss[1] != "")) // English present and non-empty
           {
-            return ss[1];       // vrati anglictinu
+            return ss[1];       // return English
           }
-          return ss[0]; // jinak vrati cestinu
+          return ss[0]; // otherwise return Czech
         }
         return ss[MainForm.Jazyk];
       }
-      else  // klic neexistuje ve stavajicim slovniku
+      else  // key does not exist in current in-memory dictionary
       {
         bool exists = false;
         // We check the raw dictionary file because it also contains
@@ -194,7 +209,7 @@ namespace UtilitaPrekladReceptu
               break;
             }
 
-            // 2) NEW behavior: also check second column (English reference)
+            // 2) NEW behavior (kept): also check second column (English reference)
             if (s == col1)
             {
               exists = true;
@@ -211,7 +226,7 @@ namespace UtilitaPrekladReceptu
 
         NewWords++;
         // Save the normalized key to avoid trailing spaces in future
-        File.AppendAllText(MainForm.Cesta + "ProgramsDictionary.txt", Environment.NewLine + s, Encoding.Unicode); // prida novy retezec do slovniku
+        File.AppendAllText(MainForm.Cesta + "ProgramsDictionary.txt", Environment.NewLine + s, Encoding.Unicode); // add new string to the dictionary file
         if (s == "1")
         {
         }
@@ -220,7 +235,7 @@ namespace UtilitaPrekladReceptu
     } //*/
 
     /// <summary>
-    /// vrati vypis celeho slovniku
+    /// Returns the whole dictionary dump.
     /// </summary>
     /// <returns> string </returns>
     public string ReturnAllDictionary()
@@ -242,28 +257,28 @@ namespace UtilitaPrekladReceptu
     }
 
     /// <summary>
-    /// vybere a nastavi index aktualniho jazyku
+    /// Selects and sets the current language index.
     /// </summary>
     /// <param name="SelectedLanguage"></param>
-    /// <returns> bool jestli se to povedlo</returns>
+    /// <returns> bool if success</returns>
     public bool SelectLanguage(string SelectedLanguage)
     {
       string[] s = dictionary["cs"];
       for (int x = 0; x < s.Length; x++)
       {
-        if (s[x] == SelectedLanguage) // musi sedet se slovnikem
+        if (s[x] == SelectedLanguage) // must match the dictionary header row
         {
           //MainForm.Jazyk=x;
-          MainForm.Jazyk = x; // vybranz jazyk se zapise do posledniho nastaveni
-          return true;  // nasel se
+          MainForm.Jazyk = x; // persist selected language index
+          return true;  // found
         }
       }
-      return false; // nenasel se
+      return false; // not found
     }
 
     public void ConvertFileToDifferentLanguage(string cesta, int jazyk)
     {
-      string[] ds = new string[dictionary.Count]; // vytvori seznam ceskych ref vyrazu
+      string[] ds = new string[dictionary.Count]; // list of reference phrases (now CZ + EN)
       dictionary.Keys.CopyTo(ds, 0);
 
       /*for(int x=0;x>dictionary.Count;x++)
@@ -277,12 +292,11 @@ namespace UtilitaPrekladReceptu
       {
         if (o1 != "")
         {
-          s = s.Replace('"' + o1 + '"', '"' + VratText(o1) + '"');  // zkraje retezce uvozovky
-          s = s.Replace('>' + o1 + '<', '>' + VratText(o1) + '<');  // zkraje retezce zavorky
-          s = s.Replace('>' + o1 + "\r\n", '>' + VratText(o1) + "\r\n");  // zkraje retezce zavorky
-          s = s.Replace("\r\n" + o1 + '<', "\r\n" + VratText(o1) + '<');  // zkraje retezce zavorky
-          s = s.Replace("\r\n" + o1 + "\r\n", "\r\n" + VratText(o1) + "\r\n");  // zkraje retezce zavorky
-
+          s = s.Replace('"' + o1 + '"', '"' + VratText(o1) + '"');  // quotes variant
+          s = s.Replace('>' + o1 + '<', '>' + VratText(o1) + '<');  // angle brackets variant
+          s = s.Replace('>' + o1 + "\r\n", '>' + VratText(o1) + "\r\n");  // with newline
+          s = s.Replace("\r\n" + o1 + '<', "\r\n" + VratText(o1) + '<');  // with newline
+          s = s.Replace("\r\n" + o1 + "\r\n", "\r\n" + VratText(o1) + "\r\n");  // between newlines
         }
       }
 
@@ -299,7 +313,7 @@ namespace UtilitaPrekladReceptu
 
     public string ConvertFileToDifferentLanguage(string cesta, int jazyk, string sdirDest)
     {
-      string[] ds = new string[dictionary.Count]; // vytvori seznam ceskych ref vyrazu
+      string[] ds = new string[dictionary.Count]; // list of reference phrases (now CZ + EN)
       dictionary.Keys.CopyTo(ds, 0);
 
       string s = File.ReadAllText(cesta);
@@ -308,11 +322,11 @@ namespace UtilitaPrekladReceptu
       {
         if (o1 != "")
         {
-          s = s.Replace('"' + o1 + '"', '"' + VratText(o1) + '"');  // zkraje retezce uvozovky
-          s = s.Replace('>' + o1 + '<', '>' + VratText(o1) + '<');  // zkraje retezce zavorky
-          s = s.Replace('>' + o1 + "\r\n", '>' + VratText(o1) + "\r\n");  // zkraje retezce zavorky
-          s = s.Replace("\r\n" + o1 + '<', "\r\n" + VratText(o1) + '<');  // zkraje retezce zavorky
-          s = s.Replace("\r\n" + o1 + "\r\n", "\r\n" + VratText(o1) + "\r\n");  // zkraje retezce zavorky
+          s = s.Replace('"' + o1 + '"', '"' + VratText(o1) + '"');  // quotes variant
+          s = s.Replace('>' + o1 + '<', '>' + VratText(o1) + '<');  // angle brackets variant
+          s = s.Replace('>' + o1 + "\r\n", '>' + VratText(o1) + "\r\n");  // with newline
+          s = s.Replace("\r\n" + o1 + '<', "\r\n" + VratText(o1) + '<');  // with newline
+          s = s.Replace("\r\n" + o1 + "\r\n", "\r\n" + VratText(o1) + "\r\n");  // between newlines
         }
       }
 
@@ -322,7 +336,7 @@ namespace UtilitaPrekladReceptu
 
       File.WriteAllText(sdirDest + "/" + sname, s);
 
-      return s; // vrati soubor pro pozdejsi pouziti pro ISO
+      return s; // returns the translated file content (for later ISO use)
     }
   }
 }
